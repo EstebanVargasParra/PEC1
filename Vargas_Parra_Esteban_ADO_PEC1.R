@@ -46,6 +46,7 @@ targets<- read.csv2("./data/targets.csv", header = TRUE, sep = ";")
 knitr::kable(
   targets, booktabs = TRUE,
   caption = 'Content of the targets file used for the current analysis')
+summary(targets)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 library(oligo)
 celFiles <- list.celfiles("./data", full.names = TRUE)
@@ -81,7 +82,7 @@ plotPCA3 <- function (datos, labels, factor, title, scale,colores, size = 1.5, g
     ggtitle(paste("Principal Component Analysis for: ",title,sep=" "))+ 
     theme(plot.title = element_text(hjust = 0.5)) +
     scale_color_manual(values=colores)
-  }
+}
 ##------------------------------------------------------------------------------------------------------------------------------------------
 plotPCA3(exprs(rawData), labels = targets$ShortName, factor = targets$Group, 
          title="Raw data", scale = FALSE, size = 3, 
@@ -189,13 +190,13 @@ if (!exists("eset_filtered")) load (file="./results/normalized.Data.Rda")
 ##------------------------------------------------------------------------------------------------------------------------------------------
 library(limma)
 designMat<-model.matrix(~0+Group, pData(eset_filtered))
-colnames(designMat) <- c("NCI.H520.PR", "NCI.H520.PS", "RH41.PR", "RH41.PS", "SJCRH30.PR", "SJCRH30.PS")
+colnames(designMat) <- c("NCIH520.PR", "NCIH520.PS", "RH41.PR", "RH41.PS", "SJCRH30.PR", "SJCRH30.PS")
 print(designMat)
 ##------------------------------------------------------------------------------------------------------------------------------------------
-cont.matrix <- makeContrasts (NCI.H520.PRvsNCI.H520.PS = NCI.H520.PR-NCI.H520.PS,
+cont.matrix <- makeContrasts (NCIH520.PRvsNCIH520.PS = NCIH520.PR-NCIH520.PS,
                               RH41.PRvsRH41.PS = RH41.PR-RH41.PS,
                               SJCRH30.PRvsSJCRH30.PS = SJCRH30.PR - SJCRH30.PS,
-                              INT = (NCI.H520.PR-NCI.H520.PS) - (RH41.PR-RH41.PS) - (SJCRH30.PR - SJCRH30.PS),
+                              INT = (NCIH520.PR-NCIH520.PS) - (RH41.PR-RH41.PS) - (SJCRH30.PR - SJCRH30.PS),
                               levels=designMat)
 print(cont.matrix)
 ##------------------------------------------------------------------------------------------------------------------------------------------
@@ -205,8 +206,8 @@ fit.main<-contrasts.fit(fit, cont.matrix)
 fit.main<-eBayes(fit.main)
 class(fit.main)
 ##------------------------------------------------------------------------------------------------------------------------------------------
-topTab_NCI.H520.PRvsNCI.H520.PS <- topTable (fit.main, number=nrow(fit.main), coef="NCI.H520.PRvsNCI.H520.PS", adjust="fdr") 
-head(topTab_NCI.H520.PRvsNCI.H520.PS)
+topTab_NCIH520.PRvsNCIH520.PS <- topTable (fit.main, number=nrow(fit.main), coef="NCIH520.PRvsNCIH520.PS", adjust="fdr") 
+head(topTab_NCIH520.PRvsNCIH520.PS)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 topTab_RH41.PRvsRH41.PS <- topTable (fit.main, number=nrow(fit.main), coef="RH41.PRvsRH41.PS", adjust="fdr") 
 head(topTab_RH41.PRvsRH41.PS)
@@ -227,11 +228,11 @@ annotatedTopTable <- function(topTab, anotPackage)
   return(annotatedTopTab)
 }
 ##------------------------------------------------------------------------------------------------------------------------------------------
-topAnnotated_NCI.H520.PRvsNCI.H520.PS <- annotatedTopTable(topTab_NCI.H520.PRvsNCI.H520.PS, anotPackage="clariomshumantranscriptcluster.db")
+topAnnotated_NCIH520.PRvsNCIH520.PS <- annotatedTopTable(topTab_NCIH520.PRvsNCIH520.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_RH41.PRvsRH41.PS <- annotatedTopTable(topTab_RH41.PRvsRH41.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_SJCRH30.PRvsSJCRH30.PS <- annotatedTopTable(topTab_SJCRH30.PRvsSJCRH30.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_INT <- annotatedTopTable(topTab_INT, anotPackage="clariomshumantranscriptcluster.db")
-write.csv(topAnnotated_NCI.H520.PRvsNCI.H520.PS, file="./results/topAnnotated_NCI.H520.PRvsNCI.H520.PS.csv")
+write.csv(topAnnotated_NCIH520.PRvsNCIH520.PS, file="./results/topAnnotated_NCIH520.PRvsNCIH520.PS.csv")
 write.csv(topAnnotated_RH41.PRvsRH41.PS, file="./results/topAnnotated_RH41.PRvsRH41.PS.csv")
 write.csv(topAnnotated_SJCRH30.PRvsSJCRH30.PS, file="./results/topAnnotated_SJCRH30.PRvsSJCRH30.PS.csv")
 write.csv(topAnnotated_INT, file="./results/topAnnotated_INT.csv")
@@ -240,7 +241,7 @@ library(clariomshumantranscriptcluster.db)
 geneSymbols <- select(clariomshumantranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
 SYMBOLS<- geneSymbols$SYMBOL
 volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
-            main=paste("Differentially expressed genes", i, sep="\n"))
+            main=paste("Differentially expressed genes", colnames(cont.matrix)[1], sep="\n")) 
 abline(v=c(-1,1))
 ##------------------------------------------------------------------------------------------------------------------------------------------
 tiff("figures/VolcanoPlot.tiff", res = 150, width = 5, height = 5, units = 'in')
@@ -359,7 +360,7 @@ heatmap.2(HMdata,
           srtCol = 30)
 dev.off()
 ##------------------------------------------------------------------------------------------------------------------------------------------
-listOfTables <- list(NCI.H520.PRvsNCI.H520.PS = topTab_NCI.H520.PRvsNCI.H520.PS,
+listOfTables <- list(NCIH520.PRvsNCIH520.PS = topTab_NCIH520.PRvsNCIH520.PS,
                      RH41.PRvsRH41.PS = topTab_RH41.PRvsRH41.PS,
                      SJCRH30.PRvsSJCRH30.PS = topTab_SJCRH30.PRvsSJCRH30.PS,
                      INT = topTab_INT)
@@ -417,15 +418,16 @@ for (i in 1:length(listOfData)){
 }
 ##------------------------------------------------------------------------------------------------------------------------------------------
 library(ggplot2)
+dev.off()
 cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
-         vertex.label.cex = 0.75)
+         vertex.label.cex = 0.2)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 tiff("figures/cnetplot.tiff", res = 100, width = 10, height = 8, units = 'in')
 cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
          vertex.label.cex = 0.7)
 dev.off()
 ##------------------------------------------------------------------------------------------------------------------------------------------
-Tab.react <- read.csv2(file.path("./results/ReactomePA.Results.NCI.H520.PRvsNCI.H520.PS.csv"), 
+Tab.react <- read.csv2(file.path("./results/ReactomePA.Results.NCIH520.PRvsNCIH520.PS.csv"), 
                        sep = ",", header = TRUE, row.names = 1)
 
 Tab.react <- Tab.react[1:4, 1:5]

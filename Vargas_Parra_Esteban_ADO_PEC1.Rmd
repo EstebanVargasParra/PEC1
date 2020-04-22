@@ -17,6 +17,7 @@ bibliography: references.bib
 link-citations: yes
 ---
 
+
 ```{r setup, include=FALSE}
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
@@ -53,7 +54,6 @@ What is generically described as "microarray data analysis" is a process that st
 
 For our objectives we can assume that a microarray dataset is a matrix of continuous values that represent the expressions of a set of genes (one gene per row), in a variety of conditions or samples (one sample per column). See figure \@ref(fig:dataset) for an example.
 
-
 Note that we have described the row contents as "genes". Strictly speaking depending on the type of array, each row may correspond to one distinct, but related, entity, a "probeset" or a "transcript".
 
 - A transcript describes how the gene has been transcribed into messenger RNA. If transcription was unique there would be a single transcript per gene. However, due to the phenomenon of alternative splicing, @Sanchez-Pla2012, there may be different transcriptions of the same gene (the associated proteins are called "isoforms"). That there may be multiple transcripts per gene.
@@ -65,7 +65,6 @@ Our main goal is to describe a workflow, a series of ordered steps that takes us
 This can be done in distinct ways. What we present here is an approach that has become very popular along the last decades based on analyzing the data from the images to the lists of genes, using the R Statistical language and some of the packages developed specifically for this in the Bioconductor project.
 
 A summary of the process can be found in figure \@ref(fig:MDAProcess).
-
 
 # Materials
 
@@ -135,7 +134,7 @@ Although the targets file need not have any fixed names it is practical to use i
 For this analysis, targets file has been saved in .csv format, separated by semicolon, although any other format that works for delimited text files might have been used (see Note 2). Table \@ref(tab:ReadTargets) shows the contents of the targets file used in this analysis.
 
 ```{r ReadTargets}
-targets<- read.csv2("./data/targets.csv", header = TRUE, sep = ";")
+targets <- read.csv2("./data/targets.csv", header = TRUE, sep = ";") 
 knitr::kable(
   targets, booktabs = TRUE,
   caption = 'Content of the targets file used for the current analysis')
@@ -154,35 +153,34 @@ The code below will download and install the packages needed for the analysis. N
 
 The first chunk makes a fresh install of basic bioconductor packages.
 ```{r installBioC, message=FALSE, warning=FALSE, eval=FALSE}
-
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install()
 ```
 The second chunk installs packages specifically needed for this study.Some packages may require compilation, so a good idea if you are not working on a linux machine, is to have `Rtools` installed. This can be downladed from [https://cran.r-project.org/bin/windows/Rtools/](https://cran.r-project.org/bin/windows/Rtools/).
 
 ```{r installPackages, message=FALSE, warning=FALSE, eval=FALSE}
-#if (!requireNamespace("BiocManager", quietly = TRUE))
-#    install.packages("BiocManager")
-#BiocManager::install()
-#install.packages("knitr")
-#install.packages("colorspace")
-#install.packages("gplots")
-#install.packages("ggplot2")
-#install.packages("ggrepel")
-#install.packages("htmlTable")
-#install.packages("prettydoc")
-#install.packages("devtools")
-#install.packages("BiocManager")
-#BiocManager::install("oligo")
-#BiocManager::install("pd.mogene.2.1.st")
-#BiocManager::install("arrayQualityMetrics")
-#BiocManager::install("pvca")
+install.packages("knitr")
+install.packages("colorspace")
+install.packages("gplots")
+install.packages("ggplot2")
+install.packages("ggrepel")
+install.packages("htmlTable")
+install.packages("prettydoc")
+install.packages("devtools")
+install.packages("BiocManager")
+BiocManager::install("oligo")
+BiocManager::install("pd.mogene.2.1.st")
+BiocManager::install("arrayQualityMetrics")
+BiocManager::install("pvca")
 # NOT NEEDED UNTIL ANALYSES ARE PERFORMED
-#BiocManager::install("limma")
-#BiocManager::install("genefilter")
-#BiocManager::install("mogene21sttranscriptcluster.db")
-#BiocManager::install("annotate")
-#BiocManager::install("org.Mm.eg.db")
-#BiocManager::install("ReactomePA")
-#BiocManager::install("reactome.db")
+BiocManager::install("limma")
+BiocManager::install("genefilter")
+BiocManager::install("mogene21sttranscriptcluster.db")
+BiocManager::install("annotate")
+BiocManager::install("org.Mm.eg.db")
+BiocManager::install("ReactomePA")
+BiocManager::install("reactome.db")
 ```
 
 ##  Read the CEL files
@@ -203,7 +201,8 @@ Note that we have read another time the targets file, but now using another spec
 
 ```{r ChangeName}
 my.targets@data$ShortName->rownames(pData(rawData))
-colnames(rawData) <-rownames(pData(rawData))
+colnames(rawData) <-rownames(pData(rawData)) 
+
 head(rawData)
 ```
 
@@ -214,13 +213,13 @@ First step is to load the library to gain access to the function. Be careful aga
 
 ```{r QCRaw, message=FALSE, warning=FALSE, eval=FALSE}
 library(arrayQualityMetrics)
-arrayQualityMetrics(rawData, outdir = file.path("./results", "raw.Data_quality"), force = TRUE) 
+arrayQualityMetrics(rawData)
 ```
 
 We have to check the results of the quality analysis in a recently created QCDir.Raw folder inside the results folder previously created. Inside this folder we have to look for a file called _index.html_, which opens a web page from where we will be able to access a summary of the analysis performed. The image in figure \@ref(fig:QCRawDataRes) shows the header of this file which contains a table with three columns indicating some quality criteria that should be verified by "good quality" arrays. In this example three samples have been marked once. Usually if there is only one mark it means that potential problems are small so we can decide to keep all the arrays in the analyis.
 
 ```{r QCRawDataRes, fig.cap="Aspect of the summary table, in the index.html file, produced by the arrayQualityMetrics package on the raw data", echo=FALSE}
-knitr::include_graphics("figures/Figure1.png")
+knitr::include_graphics("figures/figure1.png")
 ```
 
 A more comprehensive principal component analysis can be obtained using a function specifically  design for that. The code for this function is shown in the next code chunk.
@@ -287,13 +286,13 @@ eset_rma <- rma(rawData)
 After performing normalization it is interesting to perform again a quality control to check how data looks. In the same way than before (look we have changed _rawData_ object to *eset_rma*).
 
 ```{r QCNorm, message=FALSE, warning=FALSE, eval=FALSE}
-arrayQualityMetrics(eset_rma, outdir = file.path("./results", "QCDir.Norm"), force = TRUE)
+arrayQualityMetrics(eset_rma, outdir = file.path("./results", "QCDir.Norm"), force=TRUE)
 ```
 
 Figure \@ref(fig:QCNormDataRes) shows the same summary as before, but performed on normalized data.
 
 ```{r QCNormDataRes, fig.cap="Aspect of the summary table, in the index.html file, produced by the arrayQualityMetrics package on normalized data", echo=FALSE}
-knitr::include_graphics("figures/Figure2.png")
+knitr::include_graphics("figures/figure2.png")
 ```
 
 Figure \@ref(PCANorm) shows the scatterplot of the first two principal components performed on normalized data.  
@@ -333,7 +332,6 @@ Figure \@ref(fig:plotPVCA) shows a bar diagram with one bar per each source of v
 Notice that temperature __is not__ a batch factor. It is an experimental factor that was included in the experimental desiogn.
 
 ```{r plotPVCA, fig.cap="Relative importance of the different factors -genotype, temperature and interaction- affecting gene expression"}
-#plot the results
 bp <- barplot(pvcaObj$dat, xlab = "Effects",
               ylab = "Weighted average proportion variance",
               ylim= c(0,1.1),col = c("mediumorchid"), las=2,
@@ -492,14 +490,16 @@ topTab_RH41.PRvsRH41.PS <- topTable (fit.main, number=nrow(fit.main), coef="RH41
 head(topTab_RH41.PRvsRH41.PS)
 ```
 
+For comparison 2 (KOvsWT.RT): Genes that change their expression between KO and WT in room temperature:
+
 ```{r, topTabs3}
 topTab_SJCRH30.PRvsSJCRH30.PS <- topTable (fit.main, number=nrow(fit.main), coef="SJCRH30.PRvsSJCRH30.PS", adjust="fdr") 
 head(topTab_SJCRH30.PRvsSJCRH30.PS)
 ```
 
-For comparison 3 (INT): Genes that behave differently between comparison 1 and 2:
+For comparison 4 (INT): Genes that behave differently between comparison 1, 2 and 3:
 
-```{r, topTabs3}
+```{r, topTab4}
 topTab_INT  <- topTable (fit.main, number=nrow(fit.main), coef="INT", adjust="fdr") 
 head(topTab_INT)
 ```
@@ -557,7 +557,7 @@ library(clariomshumantranscriptcluster.db)
 geneSymbols <- select(clariomshumantranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
 SYMBOLS<- geneSymbols$SYMBOL
 volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
-            main=paste("Differentially expressed genes", i, sep="\n"))
+            main=paste("Differentially expressed genes", colnames(cont.matrix)[1], sep="\n")) 
 abline(v=c(-1,1))
 ```
 
