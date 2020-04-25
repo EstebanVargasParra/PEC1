@@ -1,7 +1,7 @@
 ---
 title: "PEC1"
 author: "Vargas Parra Esteban"
-date: "Abril 20, 2020"
+date: "25/4/2020"
 output:
  prettydoc::html_pretty:
     toc: true
@@ -40,126 +40,100 @@ if(!(require(printr))) {
 
 # Summary/Abstract
 
-Microarray data analysis has been one of the most important hits in the interaction between statistics and bioinformatics in the last two decades. The analysis of microarray data can be done in different ways using different tools. In this chapter a typical workflow for analyzing microarray data using R and Bioconductor packages is presented. The workflow starts with the raw data -binary files obtained from the hybridization process- and goes through a series of steps: Reading raw data, Quality Check, Normalization, Filtering, Selection of differentially expressed genes, Comparison of selected lists and Analysis of Biological Significance. The implementation of each step in R is described through a use case that goes from raw data until the analysis of biological significance. Data and code for the analysis are provided in a github repository^[https://github.com/EstebanVargasParra/PEC1.git].
+De referencia para el estudio, se tomaron unas matrices de diferentes líneas celulares. Esto con el objetivo de comparar aquellas líneas que eran sensibles a prexasertib con aquellas que eran resistentes, pues esta es una molécula que interfire en el ciclo celular, permitiendo que células cancerígenas continuen con su respectiva división. Debido a esto, se hizo un análisis donde se pudo obtener los resultados de aquellos genes que se expresaron diferencialmente; para esto se implementó el software R con la ayuda del paquete Bioconductor^[https://github.com/EstebanVargasParra/PEC1.git].
  
 ## Key Words
 
-Microarrays, Bioconductor, R, Differential Expression
+Líneas celulares, cancerígenas, genes, R, Bioconductor. 
 
-# Introduction
+# Introducción
 
-Microarray data analysis is one of the clearest cases where interaction between bioinformatics and statistics has been  highly beneficial for both disciplines. Efron @Efron2013 even calls the 21st century as the century of microarrays. 
+El proyecto Pan-Cáncer surgió como la idea de reunir el conjunto de datos de The Cancer Genome Atlas (TCGA), los cuales fuesen coherentes y consistentes en todas las clases de tumores, así como lo fueran en todas las plataformas para poder ser interpretados. Como objetivo fundamental de este proyecto, se desea determinar la alteraciones presentes en diferentes líneas tumorales para poder diseñar terapias efectivas en algún tipo de cáncer y así poder aplicarlas en otros perfiles tumorales semejantes @Weinstein2013. 
 
-What is generically described as "microarray data analysis" is a process that starts with the design of the experiment intended to answer with one or more biological questions and ends with a tentative answer for these questions. Statistics is involved at every step of this process, for preparing, transforming visualizing or analyzing data. And, of course, every step can be done in different way that use either classical statistics or new methods developed ad-hoc for these often high dimensional problems. The detailed description of these steps is out of the scope of this chapter and the reader is assumed to be familiar with them. It is assumed that the reader is already familiar with microarrays such as they are introduced in @Sanchez-Pla2014 and also with the general ideas of microarray data analysis such as can be found in @Draghici2012. In any case, for the sake of completeness basic ideas will be briefly introduced and citations provided the first time they are discussed.
+Se sabe que una de las razones por las que se presentan tumores, es debido al estrés de replicación (ER), el cual se define como el desacoplamiento del desarrollo impulsado por helicasa y el avance de las ADN polimerasas en la bifurcación de replicación del ADN. Como resultado, aquellos cánceres que se encuentran bajo ER, impulsan a la proliferación celular continua e impulsan la inestabilidad genómica @Zhao2002. La activación de la quinasa de punto de control 1(CHK1) en respuesta al daño excesivo por ER, da como resultado  la fosforilación mediada por CHK1 de la fosfatasa CDK2 CDC25A, dirigiéndose a la destrucción proteolítica. En ausencia de CDC25A, la fosforilación inhibitoria de CDK2 en el residuo de tirosina 15 se mantiene deteniendo así la fase S para permitir la reparación del daño del ADN (DDR) y la resolución de conflictos de replicación del ADN @Smith2010.
 
-For our objectives we can assume that a microarray dataset is a matrix of continuous values that represent the expressions of a set of genes (one gene per row), in a variety of conditions or samples (one sample per column). See figure \@ref(fig:dataset) for an example.
+Prexasertib es un inhibidor de CHK1, evitando así la reparación del ADN dañado. Esto puede conllevar a la acumulación de ADN dañado, promoviendo la indestabilidad genómica. Además, prexasertib potencia la citotoxicidad de los genes que dañan el ADN,  revirtiendo la resistencia de las células tumorales a los agentes quimioterapéuticos @Lowery2017. Por otra parte, en estudios clínicos se ha visto la alta relación entre la expresión de la  ciclina E con prexasertib, en una población de pacientes con cáncer de ovario seroso de alto grado altamente tratado, lo curioso, es que la alta expresión de éstos se ha relacionado con el estrés de replicación mejorado @Jones2013.
 
-Note that we have described the row contents as "genes". Strictly speaking depending on the type of array, each row may correspond to one distinct, but related, entity, a "probeset" or a "transcript".
 
-- A transcript describes how the gene has been transcribed into messenger RNA. If transcription was unique there would be a single transcript per gene. However, due to the phenomenon of alternative splicing, @Sanchez-Pla2012, there may be different transcriptions of the same gene (the associated proteins are called "isoforms"). That there may be multiple transcripts per gene.
-- A probeset is, as indicated by its name, a set of "probes", which are designed to map different fragments of a given gene. Altogether it is expected that each set of probes, or probeset, uniquely characterizes one gene. However, given that this characterization is not always possible it may be convenient to have more than one probeset per gene. That is although it is common to exchange the terms "probeset" and "gene", it is important to be aware that there may be severalprobestes per each gene.
+# Materiales
 
-In practice, given that either probesets or transcripts map to genes, it is common to describe the array rows as "genes".
-
-Our main goal is to describe a workflow, a series of ordered steps that takes us from the raw data, the digitized images as produced by the hybridization system, to one or more lists of genes that can be used to help answering a certain biological question.
-This can be done in distinct ways. What we present here is an approach that has become very popular along the last decades based on analyzing the data from the images to the lists of genes, using the R Statistical language and some of the packages developed specifically for this in the Bioconductor project.
-
-A summary of the process can be found in figure \@ref(fig:MDAProcess).
-
-# Materials
-
-In this section we list all the materials needed to perform a microarray data analysis. The document is adapted from @@GonzaloSanz2019, by the same authors.
+Para este trabajo se tomó los reultados del estudio "A pan-cancer transcriptome analysis to identify the molecular mechanism of prexasertib resistance [microarray]". Los datos se encuentran disponibles con la entrada de serie GSE143007. 
 
 ## Software
 
-First of all it is needed to install the software to perform all the required calculations. 
+El análisis de este trabajo se realizó con la versión de R 3.6.3 (2020-02-09). R es un leguaje para computación, estadísticas y gráficos, el cual proporciona una variedad de técnicas estadísticas y gráficas. R-Studio es una interfaz que facilita el uso, debido que posee un espacio más cómodo  y gráfico. 
 
-There are many options are available @Mehta2011  but one of the most common approaches is to use the __R statistical software__. R can be downloaded from its web page (https://cran.r-project.org/index.html) and installed following the instructions described there. The microarray analysis presented in this chapter has been performed with the latest version of R which, at the moment of writing, was 3.4.4. 
+## Datos
 
-R is a console based software. Its use can be facilitated with an additional interface called "R-Studio". It can be downloaded and installed following the instructions listed in its web page: https://www.rstudio.com/. Although its use is not compulsory for reproducing the analyses in this chapter it is highly recommended to work with R using this interface.
+Los datos fueron tomados de un estudio publicado por @Blosser2020,  se encuentran en la base de datos Gene Expression Omnibus (GEO), un repositorio de datos genómicos funcionales públicos el cual guarda y comparte libremente la expresión génica de alto rendimiento y otros conjuntos de datos genómicos funcionales. Los datos escogidos se encuentran identificados con el código de acceso __GSE143007__.
 
-When working with R  it is often required to use some functions not available in the basic installation. This can be done by installing additional libraries, also called "packages", developed by the scientific community. Most packages used for the analysis of high throughput genomic data are part of the Bioconductor project which started with a few packages in 2002 and has now more than one thousand (https://www.bioconductor.org/). Indeed Bioconductor has become the state-of-the-art way to analyze microarray and other omics data and it has grown from hardly a dozen packages in 2002 to the current number of more than one thousand. The analysis presented have been performed using Bioconductor version 3.6.
+Como fundamento del estudio, se observó la respuesta prexasertib en una variedad de tumores que eran de interés clínico. Por lo tanto se buscó identificar marcadores de sensibilidad prexasertib y definir los mecanismos moleculares de resistencia intrínseca y adquirida utilizando modelos preclínicos que representan múltiples tipos de tumores. Para ello, se generaron líneas celulares resistentes a prexasertib de diferentes tipos de cáncer utilizando un protocolo de escalado de concentración de fármacos a largo plazo. Con al menos 3 réplicas biológicas en líneas resistentes y sensibles. El experimento tomó en cuenta dos factores, siendo el primero la línea celular del cual se tomó, para este estudio tená tres niveles lo cuales fueron RH41, NHI-H520 y SJCRH30; el otro factor es la respuesta, siendo de dos niveles, las líneas resistentes a prexasertib (PR) y las líneas sensibles a prexasertib (PS). teniendo como resultado un diseño factorial  3x2 (CellLine y Response).
+Se usaron microarrays tipo Clariom S Human de Affymetrix para identificar genes expresados diferencialmente. 
 
-R and Bioconductor are open source free software. This has many advantages but it may sometimes be a problem, especially when new functionalities are not compatible with previous versions (see Note 1).
+* Línea celular
++ RH41
++ NHIH520
++ SJCRH30
 
-Table \@ref(tab:packagesList) shows the packages needed for the analysis presented in this chapter. The table contains the name, the source and a short description of all the packages that have to be install to run the current case study. In the following section we will show the code necessary to install all of them. 
+* Respuesta
++ Prexasertib Resistant (PR)
++ Prexasertib Sensitive (PS)
+
+Por otra parte, el manual limma nos indica que para parametrizar los datos, es más sencillo en un sólo factor aunque sea menos intuitivo, ya que nos deja realizar de una forma más simple las cuestiones en las que más interés hay sobre la investigación. Por lo cual quedaremos con modelo de un factor y seis niveles
+
++ RH41.PR
++ RH41.PS
++ NHIH520.PR
++ NHIH520.PS
++ SJCRH30.PR
++ SJCRH30.PS
 
 
-## Data 
+## Métodos
 
-This protocol is applied on a dataset from a published study @LiE7111. The data had been uploaded into the Gene Expression Omnibus (GEO) database, an international public repository that archives and freely distributes high-throughput gene expression and other functional genomics data sets @Clough2016. The dataset selected is identified with the accession number: __GSE100924__. 
+Para el siguiente estudio se siguieron los pasos del Pipelin Statistical Analysis of Microarray data Based on Gonzalo, Ricardo and Sanchez-Pla, Alex (2019) March 29, 2020. 
 
-The study that generated the data investigated the function of gene `ZBTB7B` (http://www.genecards.org/cgi-bin/carddisp.pl?gene=ZBTB7B). This gene activates the thermogenic gene program during brown and beige adipocyte differentiation regulating brown fat gene expression at ambient room temperature and following cold exposure. The experiment compared 10 weeks old mice with the gene deactivated ("KO" or knockout) or not ("WT" or Wild type) at two different temperatures, ambient room temperature (RT, $22^{\circ}$C) or following cold exposure (COLD, $4^{\circ}$C) for 4 hrs. That is, it was a $2\times2$ factorial design (genotype and temperature) with two levels each (wild type and knock out, for genotype, and room temperature and cold, for temperature). The sample size of the experiment is 12 samples, three replicates of each group. 
+### Preparación de datos:
 
-The microarrays used for this experiment were of type Mouse Gene 2.1 from Affymetrix, now Thermofisher, one of the most popular vendors of microarray technology.
+Como se dijo anteiormente, los datos fueron tomados de la base de datos Gene Expression Omnibus. Estos fueron descargados como archivos .CEL en cada muestra del experimento. Además, se realizó una archivo .csv el cual se denominó targets. 
 
+Tanto los archivos .CEL como el archivo targets.csv, se guardaron en una carpeta denominada "data" en el repositorio creado. Así como se creó una carpeta nombrada "results" donde llegarán todos los resultados de nuestro trabajo.
 
-# Methods
-
-## Environment preparation:
-
-In a microarray data analysis project, data analyst will have to manage a lot of files, including the files with the raw data (.CEL files) and the files generated during the analysis of them. For this reason, it is very advisable to define some folders before beginning with the analysis to try to not get lost, if all the files go to the same folder. We strongly recommend that user creates the following folders:
-
-  + A main folder that will be the "working directory" called for example "MicroarraysAnalysis"
-  + A folder called, for example __data__ located within the working directory: Here we will save all the _.CEL_ files and the _targets_ file with information on the covariates, described in next section.
-  + A folder called, for example __results__ located within the working directory: Here we will send all the results obtained in the microarray analysis.
-
-The following commands create the desired folders. This can be made from within R as described, or using a visual file browser such as Windows File Explorer or any other (in that case you can omit this step):
-
-```{r CreateFolders, warning=FALSE, eval=FALSE}
+```{r CreateFolders, warning=FALSE, eval=FALSE, echo=FALSE}
 setwd(".")
 dir.create("data")
 dir.create("results")
 ```
 
-The code for running this analysis, that can be easily adapted to run similar studies can be downloaded from a github repository specifically devoted to this chapter. In the following sections it is assumed that such code has been downloaded and copied into the working directory. The url for the repository is: [https://github.com/alexsanchezpla/StatisticalAnalysisOfMicroarrayData](https://github.com/alexsanchezpla/StatisticalAnalysisOfMicroarrayData). 
+### Preparación de datos para su análisis
 
-Once it is saved, open R-Studio, open the file with the R code, and in R-Studio go to the menu option in the top "Session -> Set working directory -> To source file location". This action will set the folder we have set as "main" folder as our working directory
+El archivo targets, se encarga de relacionar cada nombre de los archivos .CEL, con su categoría en el experimento, consta de cinco columnas con el siguiente orden:
 
-## Prepare the data for the analysis
+* FileName: indica el nombre del archivo .CEL.
+* Grupo: es la categoría en el experimento para cada muestra.
+* CellLines: indica a la línea celular a la que pertenece cada muestra.
+* Response: nos señala si la muestra responde con sensibilidad o resistencia al prexasertib.
+* ShotName: es una etiqueta corta para cada muestra. 
 
-The data for the analysis will be provided as two types of files, the "CEL"" files and the "targets" file. 
-
-CEL files are the files with the "raw data" originated after microarray scanning and preprocessing with Affymetrix software. This files need to be saved  into the __data__ folder. Usually one expectes to have a .CEL file for each sample in the experiment.
-
-Another file needed for the analysis is the _targets_ file, which contains the information on groups and covariates. That is, this file relates the name of each .CEL file with their condition in the experiment. We can use the targets to retain all the information valuable for the analysis like other covariables. 
-
-Although the targets file need not have any fixed names it is practical to use its column names to create labels that will be used later. For example:
-
-  - Column called _FileName_: It may contain the exact name of the CEL files in the data folder
-  - Column called _Group_: It may summarize the conditions in the experiment for that sample.
-  - Column called _ShortName_: It may be used to store a short label of the sample useful for some plots.
-  - There may be other columns to store covariables in the study such as sex, age, etc.
-  
-For this analysis, targets file has been saved in .csv format, separated by semicolon, although any other format that works for delimited text files might have been used (see Note 2). Table \@ref(tab:ReadTargets) shows the contents of the targets file used in this analysis.
-
-```{r ReadTargets}
+```{r ReadTargets, echo=FALSE}
 targets <- read.csv2("./data/targets.csv", header = TRUE, sep = ";") 
 knitr::kable(
   targets, booktabs = TRUE,
   caption = 'Content of the targets file used for the current analysis')
 ```
 
-## Packages installation in R
+### Paquetes de instalación en R
 
-Packages not available in the basic R installation need to be installed before the analysis can be done (see Note 3).
+Lo primero que se debe realizar es la instalación de los paquetes necesarios para que se pueda llevar a cabo el análisis de los resultados. Los paquete más comunes serán los CRAN y los de Bioconductor. 
 
-As commented in _Materials_ section, packages needed to do the study, may be downloaded from distinct repositories. The most common ones will be CRAN for standard packages or Bioconductor for Bioconductor packages.
-
-Standard R packages can be downloades and installed from default repositories with the `install.packages` function. 
-Bioconductor packages can be downloaded and installed with the function `install()` from the `BiocManager` package. 
-
-The code below will download and install the packages needed for the analysis. Note that __this code must be executed only once__. Subsequent executions of the analysis do not need to re-install the packages:
-
-The first chunk makes a fresh install of basic bioconductor packages.
-```{r installBioC, message=FALSE, warning=FALSE, eval=FALSE}
+Para esto, se realizar primero una instalación de "BiocManager".
+```{r installBioC, message=FALSE, warning=FALSE, eval=FALSE, echo=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install()
 ```
-The second chunk installs packages specifically needed for this study.Some packages may require compilation, so a good idea if you are not working on a linux machine, is to have `Rtools` installed. This can be downladed from [https://cran.r-project.org/bin/windows/Rtools/](https://cran.r-project.org/bin/windows/Rtools/).
-
-```{r installPackages, message=FALSE, warning=FALSE, eval=FALSE}
+Y enseguida, se hará la instalación de los paquete CRAN y Bioconductor para empezar con nuestro estudio. 
+```{r installPackages, message=FALSE, warning=FALSE, eval=FALSE, echo=FALSE}
 install.packages("knitr")
 install.packages("colorspace")
 install.packages("gplots")
@@ -183,11 +157,11 @@ BiocManager::install("ReactomePA")
 BiocManager::install("reactome.db")
 ```
 
-##  Read the CEL files
+### Leer los archivos .CEl
 
-Next step is to read the raw data (CEL files) and to store in a variable (in this case we have called it **rawData**). First we have to load the package _oligo_ with the function _library_. In this package are coded the functions to read the CEL files. Take attention to put the correct folder where the CEL files are saved when executing _list.celfiles_ function. 
+Como primer paso leeremos nuestros archivos .CEL, para poder asociarlos con nuestro archivo _targets_ y almacenarlo en una sola variable, con el objetivo de combinar las fuentes de información en una sola estructura apropiada. 
 
-```{r ReadCELfiles, message=FALSE, results='hide', warning=FALSE}
+```{r ReadCELfiles, message=FALSE, results='hide', warning=FALSE, echo=FALSE}
 library(oligo)
 celFiles <- list.celfiles("./data", full.names = TRUE)
 library(Biobase)
@@ -197,34 +171,28 @@ my.targets <-read.AnnotatedDataFrame(file.path("./data","targets.csv"),
 rawData <- read.celfiles(celFiles, phenoData = my.targets)
 ```
 
-Note that we have read another time the targets file, but now using another specific function: _read.AnnotatedDataFrame_, and stored in a new variable called _my.targets_. We have done that to associate the information stored in the CEL files with the targets file in on single variable with the last code's line. This object is called _ExpressionSet_ and is designed to combine several different sources of information into a single convenient structure. We could store in this object all the information available about the experiment performed (protocol used, experiment data, microarray type,...). Moreover it allow us to change the long name of the samples, for the short and more comprehensive label previously coded in _ShortName_ column of the _targets_.
-
-```{r ChangeName}
+```{r ChangeName, echo=FALSE}
 my.targets@data$ShortName->rownames(pData(rawData))
 colnames(rawData) <-rownames(pData(rawData)) 
 
 head(rawData)
 ```
 
-## Quality control of raw data
+### Control de calidad de los datos
 
-Once the raw data is loaded it is the moment to check if the data have enough quality for normalization. This step is very important since bad quality data could introduce a lot of noise in the analysis, that normalization process could not solve. ArrayQualityMetrics package performs different quality approaches, like boxplot of the intensity of the data and Principal Component Analysis (PCA) among others. If one array is above a certain threshold defined in the function it is marked with an asterisk as an outlier. When a certain array is marked three times it should be revised carefully, perhaps this sample will have to be rejected to improve the overall quality of the experiment.
-First step is to load the library to gain access to the function. Be careful again to specify correctly the destination folder of the results:
+En el momento que los datos están cargados, es importante rectificar la calidad para proceder a la normalización. Para ello, revisamos los resultados de nuestra matriz y concluimos cuáles resultados del experimento se encuentran por encima de un umbral definido. 
 
-```{r QCRaw, message=FALSE, warning=FALSE, eval=FALSE}
+```{r QCRaw, message=FALSE, warning=FALSE, eval=FALSE, echo=FALSE}
 library(arrayQualityMetrics)
 arrayQualityMetrics(rawData)
 ```
 
-We have to check the results of the quality analysis in a recently created QCDir.Raw folder inside the results folder previously created. Inside this folder we have to look for a file called _index.html_, which opens a web page from where we will be able to access a summary of the analysis performed. The image in figure \@ref(fig:QCRawDataRes) shows the header of this file which contains a table with three columns indicating some quality criteria that should be verified by "good quality" arrays. In this example three samples have been marked once. Usually if there is only one mark it means that potential problems are small so we can decide to keep all the arrays in the analyis.
-
-```{r QCRawDataRes, fig.cap="Aspect of the summary table, in the index.html file, produced by the arrayQualityMetrics package on the raw data", echo=FALSE}
+```{r QCRawDataRes, fig.cap="Aspect of the summary table, in the index.html file, produced by the arrayQualityMetrics package on the raw data.", echo=FALSE}
 knitr::include_graphics("figures/figure1.png")
 ```
 
-A more comprehensive principal component analysis can be obtained using a function specifically  design for that. The code for this function is shown in the next code chunk.
-
-```{r}
+Lo datos sin procesar indicaron que hay 5 grupos que tienen valores atípicos, principalmente _NCIH520.PR.2_, que presentó valores atípicos en los tres grupos de análisis. Por otra parte, _RH41.PR.3_ presentó diferencia en los grupos de análisis de las _ditancias entre los arrays_ y el _MAPlots_. Por último _RH41.PR.5_, _NCIH520.PS.2_ y _NCIH520.PR.1_, obtuvieron valores atípicos únicamente en el _MAPlots_
+```{r, echo=FALSE}
 library(ggplot2)
 library(ggrepel)
 plotPCA3 <- function (datos, labels, factor, title, scale,colores, size = 1.5, glineas = 0.25) {
@@ -247,79 +215,77 @@ plotPCA3 <- function (datos, labels, factor, title, scale,colores, size = 1.5, g
   }
 ```
 
-Figure \@ref(fig:PCARaw) shows the scatterplot of the first two principal components performed on the raw data.
-
-```{r PCARaw, message=FALSE, fig.cap="Visualization of the two first Principal Components for raw data"}
+```{r PCARaw, message=FALSE, fig.cap="Visualización de los dos primeros componentes principales para datos sin procesar", echo=FALSE}
 plotPCA3(exprs(rawData), labels = targets$ShortName, factor = targets$Group, 
          title="Raw data", scale = FALSE, size = 3, 
          colores = c("red", "blue", "green", "yellow", "darkviolet", "cyan"))
 ```
 
-Note that we have defined in the function some parameters to facilitate the visualization.
+El análisis se componentes principales, representa el 42.1% de variablidad de nuestras muestras, esta variabilidad se destaca principalmente por la línea ceular de donde se obtuvo los resultados del experimento.   
 
-  + the label of the samples, remember that it is coded in the _ShortName_ column of the targets
-  + the characteristic to color the samples, coded in the _Group_ column in targets
-  + the colors of each group
-
-First component of the PCA accounts for 55.9% of the total variability of the samples, and as we can observe in the plot, this variability is mainly contributed by the _temperature_ condition since samples incubated to 4 degrees are on the right and samples incubated at room temperature are on the left.
-
-In the same way, we can easily visualize the intensity distribution of the arrays using boxplots. Figure \@ref(fig:BoxplotRaw) shows a multiple boxplot depicting the distribution of the intensities along all samples.
-
-```{r BoxplotRaw, message=FALSE, fig.cap="Boxplot for arrays intensities (Raw Data)"}
+```{r BoxplotRaw, message=FALSE, fig.cap="Diagrama de caja (Raw Data)", echo=FALSE}
 boxplot(rawData, cex.axis=0.5, las=2,  which="all", 
         col = c(rep("red", 3), rep("blue", 5), rep("green", 3), rep("yellow", 3), rep("darkviolet", 3), rep("cyan", 3)),
         main="Distribution of raw intensity values")
 ```
 
-A light variation of intensity among arrays is observed, but this is the expected for raw data.
+El boxplot representa las distribuciones de intensidad de señal de cada matriz, en donde cada caja representa un grupo. Se espera que las distribuciones tengan rangos y anchos similares, algo que no está ocurriendo en este instante. 
 
-## Data normalization
+```{r, echo=FALSE}
+knitr::include_graphics("figures/figure3.png")
+```
 
-Before beginning with differential expression analysis, it is necessary to make the arrays comparable among them and try to reduce, and if it is possible to eliminate, all the variability in the samples not owing to biological reasons.Normalization process tries to assure that intensity differences present in the array, reflects the differential expression of the genes, rather than artificial biases due to technical issues. Normalization process consists of three discrete steps: background correction, normalization, and summarization. Most commonly used method for array normalization is Robust Multichip Analysis @rmaIri:
+El _MAPlots_, define la distirbución de la masa, si la tendencia muestra un rango infeior _A_, señala que las matrices poseen diferentes intensidades de fondo como sucede en nuestra respectiva gráfica. 
 
-```{r Normalization}
+### Normalización de datos
+
+Como nuestras matrices poseen cierta diferencias entre ellas, para poder realizar una análisis de expresión diferencial se buscará reducir o eliminar toda la variabilidad presente. Así, procedmeos a la normalización, donde se corregirán todos lo posibles errores sistemáticos y la variabilidad de las muestras, logrando comparaciones bajo las mismas condiciones. 
+
+```{r Normalization, echo=FALSE}
 eset_rma <- rma(rawData)
 ```
 
-## Quality control of normalized data
+### Control de calidad de los datos normalizados
 
-After performing normalization it is interesting to perform again a quality control to check how data looks. In the same way than before (look we have changed _rawData_ object to *eset_rma*).
+Después de normalizar los datos, se realiza de nuevo el control de calidad para observar los datos como se hizo anteriormente. 
 
-```{r QCNorm, message=FALSE, warning=FALSE, eval=FALSE}
+```{r QCNorm, message=FALSE, warning=FALSE, eval=FALSE, echo=FALSE}
 arrayQualityMetrics(eset_rma, outdir = file.path("./results", "QCDir.Norm"), force=TRUE)
 ```
 
-Figure \@ref(fig:QCNormDataRes) shows the same summary as before, but performed on normalized data.
-
-```{r QCNormDataRes, fig.cap="Aspect of the summary table, in the index.html file, produced by the arrayQualityMetrics package on normalized data", echo=FALSE}
+```{r QCNormDataRes, fig.cap="Aspecto de la tabla de resumen, en el archivo index.html, producido por el paquete arrayQualityMetrics en datos normalizados", echo=FALSE}
 knitr::include_graphics("figures/figure2.png")
 ```
 
-Figure \@ref(PCANorm) shows the scatterplot of the first two principal components performed on normalized data.  
+A diferencia de los datos anteriores, ya no se resalta una variablidad en alguna de las tres categorías. Así, las matrices están más acordes para entrar en el análisis de expresión diferencial. 
 
-```{r fig:PCANorm, message=FALSE, fig.cap="Visualization of first two principal components for normalized data"}
+```{r fig:PCANorm, message=FALSE, fig.cap="Visualización de los dos primeros componentes principales para datos normalizados", echo=FALSE}
 plotPCA3(exprs(eset_rma), labels = targets$ShortName, factor = targets$Group, 
          title="Normalized data", scale = FALSE, size = 3, 
          colores = c("red", "blue", "green", "yellow", "darkviolet", "cyan"))
 ```
 
-Now first component accounts for 33% of the total variability. Notice that the percentage of explained variability has decreased with respect to PCA performed on raw data. Similarly as with the PCA with raw data, it separates samples from _COLD_ level of _temperature_ condition on the right, and samples from _RT_ level on the left. It is important to note that there are one sample from group _KO.RT_ that groups near __WT.RT__ and viceversa. It could be an issue of mislabeling of samples that should be checked with the laboratory that has processed the samples.
+El primer componente representa el 55% de la variabilidad total, mientras que el segundo representa un 17.6%. Si lo comparamos con los datos sin procesar, el primer componene aumentó, mientras que el segundo ha disminuido, conglomerando tres grupos en el nivel de línea celular.  
 
-Figure \@ref(fig:BoxplotNorm) shows a multiple boxplot depicting the distribution of the normalized intensities along all samples. Notice that all boxplots have the same aspect. This suggests that the normalization has worked fine. However it is important to be aware that RMA includes a step ("quantile normalization") where the empirical distribution of all the samples is set to the same values. As a consequence __it is expected that the boxplots are identical or at least very similar__.
-
-```{r BoxplotNorm, message=FALSE, fig.cap="Distribution of  intensities for normalized data"}
+```{r BoxplotNorm, message=FALSE, fig.cap="Distribución de intensidades para datos normalizados", echo=FALSE}
 boxplot(eset_rma, cex.axis=0.5, las=2, which="all",
         col = c(rep("red", 3), rep("blue", 5), rep("green", 3), rep("yellow", 3), rep("darkviolet", 3), rep("cyan", 3)),
         main="Boxplot for arrays intensity: Normalized Data")
 ```
 
-## Batch detection
+Los datos normalizados, ya muestran unas cajas con la misma distribución y el mismo ancho. 
 
-Gene expression microarray results can be affected by minuscule differences in any number of non-biological variables like reagents from different lots, different technicians and the more usual issue the different processing date of samples from the same experiment. The cumulative error introduced by these time and place-dependent experimental variations is referred to as "batch effects". Different approaches have been developed for identifying and removing batch effects from microarray data like surrogate variable analysis, Combat and Principal variation component analysis (PVCA). 
+```{r, echo=FALSE}
+knitr::include_graphics("figures/figure4.png")
+```
 
-Here we will use the last one, Principal Variation Component Analysis, which estimates source and proportion of variation in two steps, principal component analysis, and variance component analysis. All samples were processed the same day (this can be seen using function `get.celfile.dates()` from package `affyio`) so a typical batch factor such as "Processing date" __needs not__ be considered. 
+Lo mismo ocurre con el _MAPlots_, teniendo una distribución de las masas en _M=0_ y un rango igual a _A_, indicando que las matrices poseen la misma intensidad de fondo. 
 
-```{r BatchDetection, message=FALSE, warning=FALSE}
+### Detección de lotes. 
+
+Los efectos por lotes se presentan en los datos de microarrays. El enfoque de PVCA, se usa como herramienta de detección para encontrar qué fuentes de variabilidad ya sea biológica, técnica u otra, son más prominentes en un conjunto de datos de microarrays dado @Bushel2013. 
+
+```{r BatchDetection, message=FALSE, warning=FALSE, echo=FALSE}
 library(pvca)
 pData(eset_rma)<-targets
 pct_threshold<-0.6
@@ -327,11 +293,7 @@ batch.factors<-c("CellLine", "Response")
 pvcaObj <- pvcaBatchAssess (eset_rma, batch.factors, pct_threshold)
 ```
 
-Figure \@ref(fig:plotPVCA) shows a bar diagram with one bar per each source of variation included in the analysis. Their relative size indicates the percentage of variability attributable to each source. The plot shows that the main source of variation in the samples is the _Temperature_ condition. This was also observed on the PCA plots on raw and normalized data in figures \@ref(fig:PCARaw) and \@ref(fig:PCANorm).
-
-Notice that temperature __is not__ a batch factor. It is an experimental factor that was included in the experimental desiogn.
-
-```{r plotPVCA, fig.cap="Relative importance of the different factors -genotype, temperature and interaction- affecting gene expression"}
+```{r plotPVCA, fig.cap="Importancia relativa de los diferentes factores -genotipo, que afectan la expresión génica", echo=FALSE}
 bp <- barplot(pvcaObj$dat, xlab = "Effects",
               ylab = "Weighted average proportion variance",
               ylim= c(0,1.1),col = c("mediumorchid"), las=2,
@@ -342,14 +304,13 @@ new_values = round(values , 3)
 text(bp,pvcaObj$dat,labels = new_values, pos=3, cex = 0.7)
 ```
 
-## Detecting most variable genes
+La figura indica un diagrama, donde cada barra es una fuente de variación incluida en el análisis. La principal fuente de variación es _CellLine_, lo cual también se observó en el PCA de datos sin procesar y normalizados. Es importante resaltar, que no es un factor lote, sino un factor experimental. 
 
-Selection of differentially expressed genes is affected by the number of genes on which we make it. The higher the number, the greater the necessary adjustment of p-values (as will be seen below), which will lead us to end up miscarrying more genes.
+### Detectar genes más variables.
 
-If a gene is differentially expressed, it is expected that there is a certain difference between the groups, and therefore the overall variance of the gene will be greater than that of those that do not have differential expression. 
-Plotting the overall variability of all genes is useful to decide which percentage of genes shows a variability that can be attributed to other causes than random variation. Figure \@ref(fig:SDplot) depicts the standard deviations of all genes sorted from smallest to biggest values. The plot shows that the most variable genes are those with a standard deviation above 90-95% of all standard deviations.
+Cuando un gen se expresa de manera diferencial, su varianza es mayor que la de aquellos genes que no poseen una expresión diferencial. 
 
-```{r SDplot, fig.cap="Values of standard deviations allong all samples for all genes ordered from smallest to biggest"}
+```{r SDplot, fig.cap="Los valores de las desviaciones estándar abarcan todas las muestras para todos los genes ordenados de menor a mayor", echo=FALSE}
 sds <- apply (exprs(eset_rma), 1, sd)
 sdsO<- sort(sds)
 plot(1:length(sdsO), sdsO, main="Distribution of variability for all genes",
@@ -358,13 +319,13 @@ plot(1:length(sdsO), sdsO, main="Distribution of variability for all genes",
 abline(v=length(sds)*c(0.9,0.95))
 ```
 
-## Filtering least variable genes
+Los genes de mayor variabilidad son aquellos que están con una desviación estándar superior al 90-95% de todas las desviaciones estándar. 
 
-Filtering out those genes whose variability can be attributed to random variation, that is the genes that are, reasonably, not expected to be differential expressed, has proven to be useful to reduce the number of tests to be performed with the corresponding increase in power @Hackstadt2009.
+## Filtrar genes con menos variables
 
-Function `nsFilter` from the bioconductor package `genefilter` can be used to remove genes based on a variability threshold. If an annotation package -associating probesets identifiers and gene identifiers from different databases- is available it can also be used to remove probesets which do not have a gene identifier associated.
+El filtrado de genes, es una práctica común no solo porque puede aumentar nuestra confianza en los genes descubiertos expresados diferencialmente, sino también porque puede aumentar el número total de estos en un experimento. Así como como también permite identificar aquellos genes que su variabilidad fue aleatoria y no se esperaba que se expresaran diferencialmente @Bourgon2010. 
 
-```{r Filtering1, results='hide', message=FALSE}
+```{r Filtering1, results='hide', message=FALSE, echo=FALSE}
 library(genefilter)
 library(clariomshumantranscriptcluster.db)
 annotation(eset_rma) <- "clariomshumantranscriptcluster.db"
@@ -374,88 +335,67 @@ filtered <- nsFilter(eset_rma,
                      filterByQuantile=TRUE, feature.exclude = "^AFFX")
 ```
 
-Function `nsFilter` returns the filtered values and a report of the filtering results.
-
 ```{r FilterResults1, results='hide', echo=FALSE}
 names(filtered)
 class(filtered$eset)
 ```
 
-```{r FilterResults2}
+```{r FilterResults2, echo=FALSE}
 print(filtered$filter.log)
 eset_filtered <-filtered$eset
 ```
 
-After filtering there are `r dim(exprs(eset_filtered))[1]` genes left. Note that we have stored the genes left in the variable *eset_filtered*
+Después de filtrar, quedan `r dim(exprs(eset_filtered))[1]` genes. Tener en cuenta que los genes almacenados queda en a variable *eset_filtered*
 
-## Saving normalized and filtered data
+### Guardar datos normalizados y filtrados
 
-Normalized filtered data are the starting point for further analyses but we may want to go back to them, for example to review specific gene expression values. It is usual to save the binary objects but also to write expression values into text or excel files. Writing to Excel from R is not a trivial task -for strange it may seem- because different packages work differently depending of the operating system, so it is omitted from the code.
+Los datos filtrados normalizados son el punto de partida para los análisis. Guardarlos en este punto es clave, por si se quiere revisar algunos valores de expresión génica específicos. 
 
-```{r SaveData1, results='hide', message=FALSE}
+```{r SaveData1, results='hide', message=FALSE, echo=FALSE}
 write.csv(exprs(eset_rma), file="./results/normalized.Data.csv")
 write.csv(exprs(eset_filtered), file="./results/normalized.Filtered.Data.csv")
 save(eset_rma, eset_filtered, file="./results/normalized.Data.Rda")
 ```
 
-## Defining the experimental setup: The design matrix
+### Matriz de diseño
 
-Selection of differential expressed genes basically consists of doing some type of test,  usually on a gene-wise basis, to compare gene expression between groups. This can be done using many different approaches (see @Chrominski2015). There is a general agreement that using standard statistical tests such as t-tests is not appropriate @Jeanmougin2010 and that better options are methods that perform some type of variance shrinking @Allison2006. Techniques specifically developed for microarrays such as SAM @Tusher2001 or Linear Models for Microarrays @Smyth2004 have proved to produce much better results @Chrominski2015.
+La matriz de diseño se puede tomar de una variable de factor introducida en el archivo _targets_, este fue el objetivo de su creación. Para el presente estudio, la variable Group es una combinación de las condiciones "RH41, NCIH520, SJCRH30" y "PS, PR", que se representan simultáneamente como un factor de seis niveles. Como resultado, se tiene una matriz de 20x6.  
 
-In this protocol the Linear Models for Microarrays method, implemented in the limma package @Smyth2005 is used to select differential expressed genes.
-
-The first step for the analysis based on linear models is to create the __design matrix__. Basically it is a table that describes the allocation of each sample to a group or experimental condition. It has as many rows as samples and as many columns as groups (if only one factor is considered).
-Each row contains a one in the column of the group to which the sample belongs and a zero in the others.
-
-The design matrix can be defined manually or from a factor variable that may have been introduced in the "targets" file with this aim created specifically for it. In this study  that "Group" variable is a combination of the two experimental conditions, "KO/Wild" and "RT/COLD" which are jointly represented as one factor with 4 levels.
-
-```{r LoadSavedData}
+```{r LoadSavedData, echo=FALSE}
 if (!exists("eset_filtered")) load (file="./results/normalized.Data.Rda")
 ```
 
-```{r DesignMatrix, message=FALSE}
+```{r DesignMatrix, message=FALSE, echo=FALSE}
 library(limma)
 designMat<-model.matrix(~0+Group, pData(eset_filtered))
-colnames(designMat) <- c("NCI.H520.PR", "NCI.H520.PS", "RH41.PR", "RH41.PS", "SJCRH30.PR", "SJCRH30.PS")
-print(designMat)
+colnames(designMat) <- c("NCIH520.PR", "NCIH520.PS", "RH41.PR", "RH41.PS", "SJCRH30.PR", "SJCRH30.PS")
+row.names(designMat) <- c("RH41.PS.1", "RH41.PS.2", "RH41.PS.3", "RH41.PR.1", "RH41.PR.2", "RH41.PR.3", "RH41.PR.4", "RH41.PR.5", "NCIH520.PS.1", "NCIH520.PS.2", "NCIH520.PS.3",
+                          "NCIH520.PR.1", "NCIH520.PR.2", "NCIH520.PR.3",
+                          "SJCRH30.PS.1", "SJCRH30.PS.2", "SJCRH30.PS.3",
+                          "SJCRH30.PR.1", "SJCRH30.PR.2", "SJCRH30.PR.3")
 ```
 
-## Defining comparisons with the Contrasts Matrix
+### Definiendo comparaciones con la Matriz de Contrastes
 
-The contrasts matrix is used to describe the comparisons between groups 
-It consists of as many columns as comparisons and as many rows as
-groups (that is, as columns of the design matrix). 
-A comparison between groups - called "contrast" - is represented by a "1" and a "-1" in the rows of groups to compare and zeros in the rest. 
-If several groups intervened in the comparison would have as many coefficients as groups with the only restriction that its sum would be zero.
+Con la matriz de contraste, se hizo una comparación entre grupos. El número de columnas es igual a la cantidad de comparaciones y el número de filas es igual a la cantidad de grupos. El "1" y "-1" están en las filas de los grupos a comparar y el "0" el resto. En este estudio se quiere comparar la expresión diferencial génica entre líneas celulares por separado (RH41, NCIH520, SJCRH30) para la resistencia a prexasertib o la sensibilidad a éste. 
 
-In this example we want to check the effect of knocking out a gene ("KO vs WT") separately for cold and RT temperature. Also we want to test if there is interaction between knocking out the gene and temperature. This can be done by doing three comparisons described below:
-
-```{r setContrasts}
-cont.matrix <- makeContrasts (NCI.H520.PRvsNCI.H520.PS = NCI.H520.PR-NCI.H520.PS,
+```{r setContrasts, echo=FALSE}
+cont.matrix <- makeContrasts (NCIH520.PRvsNCIH520.PS = NCIH520.PR-NCIH520.PS,
                               RH41.PRvsRH41.PS = RH41.PR-RH41.PS,
                               SJCRH30.PRvsSJCRH30.PS = SJCRH30.PR - SJCRH30.PS,
-                              INT = (NCI.H520.PR-NCI.H520.PS) - (RH41.PR-RH41.PS) - (SJCRH30.PR - SJCRH30.PS),
+                              INT = (NCIH520.PR-NCIH520.PS) - (RH41.PR-RH41.PS) - (SJCRH30.PR - SJCRH30.PS),
                               levels=designMat)
 print(cont.matrix)
 ```
 
-The contrast matrix is defined to perform three comparisons: Effect of KO in Cold temperature, Effect of KO in RT temperature and interaction between KO and temperature.
 
-## Model estimation and gene selection
+### Estimación del modelo y selección de genes
 
-Once the design matrix and the contrasts have been defined, we can proceed to estimate the model, estimate the contrasts and perform the significance tests that will lead to the decision, for each gene and each comparison, if they can be considered differential expressed.
+Ya definida la matriz de diseño y los contrastes, se estima el modelo y los contrastes para realizar las pruebas de significación, que permitirán decidir si cada gen en comparación puede considerarse expresados diferencialmente. El análisis contempla loas valores-p ajustados, para ordenar los genes del que más se exprese al de menor expresión diferencial. 
 
-The method implemented in the `limma` package extends the traditional analysis using Empirical Bayes models to combine an estimate of variability based on the entire matrix with individual estimates based on each individual values providing improved error estimates @Smyth2004.
+Los falsos positivos se controlan, ajustando el valor-p para tener control sobre la tasa de falsos positivos utilizados. 
 
-The analysis provides the usual test statistics such as Fold-change
-t-moderated or adjusted p-values that are used to order the genes from more unless differential expressed.
-
-In order to control the percentage of false positives that may result from high number of contrasts made simultaneously the p-values are adjusted so that we have control over the false positive rate using the
-Benjamini and Hochberg method @Benjamini1995.
-
-All relevant information for further exploration of the results is stored in an R object of class `MArrayLM` defined in the `limma` package. Here it is named as `fit.main`.
-
-```{r, linearmodelfit}
+```{r, linearmodelfit, echo=FALSE}
 library(limma)
 fit<- lmFit(eset_filtered, designMat)
 fit.main<-contrasts.fit(fit, cont.matrix)
@@ -463,56 +403,52 @@ fit.main<-eBayes(fit.main)
 class(fit.main)
 ```
 
-## Obtaining lists of differentially expressed genes
+### Obtención de listas de genes expresados diferencialmente
 
-The `limma` package implements function `topTable` which contains, for a given contrast a list of genes ordered from smallest to biggest p--value which can be considered to be most to least differential expressed. For each gene the following statistics are provided:
+La lista de genes diferencialmente expresados se obtiene ordenada, desde el valor-p más pequeño al más grande y que se puede considerar como más o menos expresado diferencialmente. En cada gen se obtiene los siguientes resultados:
 
-- `logFC`: Mean difference between groups.  
--  `AveExpr`: Average expression of all genes in the comparison.
--  `t` : Moderated t-statistic (t-test-like statistic for the comparison).
--  `P.Value`: Test p--value.  
--  `adj.P.Val`: Adjusted p--value following @Benjamini1995      
--  `B`: B-statistic: Posterior log odds of the gene of being vs non being differential expressed.
+- `logFC`: diferencia media entre grupos.
+- `AveExpr`: expresión promedio de todos los genes en la comparación.
+- `t`: estadística t moderada.
+- `P.Value`: prueba p - valor.
+- `adj.P.Val`: valor p ajustado
+- `B`: estadística B: probabilidad del registro posterior del gen del ser vs no ser diferencialmente expresado.
 
-We can have a look at the first lines of each `topTable`.
+Para la comparación 1 (NCIH520.PRvsNCIH520.PS): Genes que cambian su expresión en la línea celular NCIH520 entre los resistentes  y sensibles a prexasertib. 
 
-For comparison 1 (KOvsWT.COLD): Genes that change their expression between KO and WT in cold temperature:
-
-```{r, topTabs1}
-topTab_NCI.H520.PRvsNCI.H520.PS <- topTable (fit.main, number=nrow(fit.main), coef="NCI.H520.PRvsNCI.H520.PS", adjust="fdr") 
-head(topTab_NCI.H520.PRvsNCI.H520.PS)
+```{r, topTabs1, echo=FALSE}
+topTab_NCIH520.PRvsNCIH520.PS <- topTable (fit.main, number=nrow(fit.main), coef="NCIH520.PRvsNCIH520.PS", adjust="fdr") 
+head(topTab_NCIH520.PRvsNCIH520.PS)
 ```
 
-For comparison 2 (KOvsWT.RT): Genes that change their expression between KO and WT in room temperature:
+Para la comparación 2 (RH41.PRvsRH41.PS): Genes que cambian su expresión en la línea celular RH41 entre los resistentes  y sensibles a prexasertib.
 
-```{r, topTabs2}
+```{r, topTabs2, echo=FALSE}
 topTab_RH41.PRvsRH41.PS <- topTable (fit.main, number=nrow(fit.main), coef="RH41.PRvsRH41.PS", adjust="fdr") 
 head(topTab_RH41.PRvsRH41.PS)
 ```
 
-For comparison 2 (KOvsWT.RT): Genes that change their expression between KO and WT in room temperature:
+Para la comparación 3 (SJCRH30.PRvsSJCRH30.PS): Genes que cambian su expresión en la línea celular SJCRH30 entre los resistentes  y sensibles a prexasertib.
 
-```{r, topTabs3}
+```{r, topTabs3, echo=FALSE}
 topTab_SJCRH30.PRvsSJCRH30.PS <- topTable (fit.main, number=nrow(fit.main), coef="SJCRH30.PRvsSJCRH30.PS", adjust="fdr") 
 head(topTab_SJCRH30.PRvsSJCRH30.PS)
 ```
 
-For comparison 4 (INT): Genes that behave differently between comparison 1, 2 and 3:
+Para la comparación 4 (INT): Genes que se comportan de manera diferente entre la comparación 1, 2 y 3. 
 
-```{r, topTab4}
+```{r, topTab4, echo=FALSE}
 topTab_INT  <- topTable (fit.main, number=nrow(fit.main), coef="INT", adjust="fdr") 
 head(topTab_INT)
 ```
 
-First column of each topTable contains the manufacturer's (Affymetrix) ID for each probeset. Next step is to guess which gene correspond to each Affymetrix ID. This process is called **annotation**.
+La primera columna de cada topTab contiene la identificación del fabricante (Affrymetix) para cada conjunto de sondas. El paso siguiente es saber qué gen corresponde a cada ID de Affymetrix, o sea se lleva a cabo la anotación.
 
-## Gene Annotation
+### Anotación de genes
 
-Once we have the top table it is useful to provide additional information on the features that have been selected. This process is called "annotation" and essentially what it does is to look for information to associate identifiers that appear in the top table, usually corresponding to probesets or transcripts depending of the array type, with more familiar names such as the Gene Symbol, the Entrez Gene identifier or the Gene description.
+En este punto, lo que se busca es información asociada a los identificadores que aparecen en cada topTab, generalmente correspondientes a sondas o transcripciones que dependen del tipo de matriz, con nombres más familiares como el Símbolo del gen, el Identificador del gen Entrez o la descripción del gen.
 
-For simplicity, because there are three toptables, a function annotating one topTable with a given package is prepared and used.
-
-```{r GeneAnnotation, message=FALSE, warning=FALSE}
+```{r GeneAnnotation, message=FALSE, warning=FALSE, echo=FALSE}
 annotatedTopTable <- function(topTab, anotPackage)
 {
   topTab <- cbind(PROBEID=rownames(topTab), topTab)
@@ -524,42 +460,47 @@ annotatedTopTable <- function(topTab, anotPackage)
 }
 ```
 
-```{r annotateTopTables}
-topAnnotated_NCI.H520.PRvsNCI.H520.PS <- annotatedTopTable(topTab_NCI.H520.PRvsNCI.H520.PS, anotPackage="clariomshumantranscriptcluster.db")
+```{r annotateTopTables, echo=FALSE}
+topAnnotated_NCIH520.PRvsNCIH520.PS <- annotatedTopTable(topTab_NCIH520.PRvsNCIH520.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_RH41.PRvsRH41.PS <- annotatedTopTable(topTab_RH41.PRvsRH41.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_SJCRH30.PRvsSJCRH30.PS <- annotatedTopTable(topTab_SJCRH30.PRvsSJCRH30.PS, anotPackage="clariomshumantranscriptcluster.db")
 topAnnotated_INT <- annotatedTopTable(topTab_INT, anotPackage="clariomshumantranscriptcluster.db")
-write.csv(topAnnotated_NCI.H520.PRvsNCI.H520.PS, file="./results/topAnnotated_NCI.H520.PRvsNCI.H520.PS.csv")
+write.csv(topAnnotated_NCIH520.PRvsNCIH520.PS, file="./results/topAnnotated_NCIH520.PRvsNCIH520.PS.csv")
 write.csv(topAnnotated_RH41.PRvsRH41.PS, file="./results/topAnnotated_RH41.PRvsRH41.PS.csv")
 write.csv(topAnnotated_SJCRH30.PRvsSJCRH30.PS, file="./results/topAnnotated_SJCRH30.PRvsSJCRH30.PS.csv")
 write.csv(topAnnotated_INT, file="./results/topAnnotated_INT.csv")
 ```
 
-Annotation makes the tables more comprehensible. Table \@ref(tab:annotatedTop) shows the annotations added to results "topTable" for the comparison "KOvsWT.COLD" (only the first four columns are shown).
+La anotación permite que las tablas sean más comprensibles. El siguiente resultado es sólo una muestra de cómo se observan las anotaciones para la comparación NCIH520.PRvsNCIH520.PS (Se tendrán en cuenta sólo las primeras cuatro columnas).
 
 ```{r annotatedTop, echo=FALSE}
-#short<- head(topAnnotated_KOvsWT.COLD[1:5,1:4])
-# library(kableExtra)
-# knitr::kable(
-#   short, booktabs = TRUE,
-#   caption = 'Annotations added to results "topTable" for the comparison "KOvsWT.COLD"'
-# )
-#show(short)
+short<- head(topAnnotated_NCIH520.PRvsNCIH520.PS[1:5,1:4])
+ library(kableExtra)
+ knitr::kable(
+   short, booktabs = TRUE,
+   caption = 'Annotations added to results "topTable" for the comparison "NCIH520.PRvsNCIH520.PS"')
+show(short)
 ```
 
 
-## Visualizing differential expression
+### Visualizando la expresión diferencial
 
-A visualization of the overall differential expression can be obtained using volcano-plots. These plots show if there are many or few genes with a large fold-change and significantly expressed or if this number is low. These graphs represent in the X-axis the changes of expression in logarithmic scale ("biological effect") and in the Y-axis the "minus logarithm" of the p-value or alternatively the `B` statistic ("Statistical effect"). Figure \@ref(fig:volcanoPlot) shows a volcano plot for the comparison between KO and WT in COLD temperature. The names of the top 4 genes (i.e. the first four genes in the topTable) are shown in the plot.
+El gráfico de volcán es una plot que ordena los genes en dos ejes, el eje x representado por _Fold Change_ que es la dimensión biológica y el _P-value_ que es la dimensión estadística. Por ende el eje horizontal nos indica el impacto biológico del cambio y el eje vertical la fiabilidad del cambio.  
 
-```{r volcanoPlot, fig.cap="Volcano plot for the comparison between KO and WT in COLD temperature. The names of the top 4 genes (i.e. the first four genes in the topTable) are shown in the plot"}
+```{r volcanoPlot, fig.cap="Diagrama del volcán para la comparación entre las matrices. Los nombres de los 10 genes principales (es decir, los primeros diez genes en la tabla superior) se muestran en la gráfica", echo=FALSE}
 library(clariomshumantranscriptcluster.db)
 geneSymbols <- select(clariomshumantranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
 SYMBOLS<- geneSymbols$SYMBOL
-volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
-            main=paste("Differentially expressed genes", colnames(cont.matrix)[1], sep="\n")) 
-abline(v=c(-1,1))
+par(mfrow=c(2,2))
+for (i in colnames(cont.matrix)){
+  volcanoplot(fit.main, coef=i, highlight=10, names=SYMBOLS,
+              main=paste("Differentially expressed genes",i, sep="\n"))
+  abline(v=c(-1,1))
+  dev.off()
+}
 ```
+
+Cada diagrama de volcán muestra la confrontación entre las matrices, basados en el diseño experimental. Los nombres de los 10 genes con mayor epresión diferencial en cada comparación, se encuentran en la gráfica. 
 
 ```{r saveVolcanos, echo=FALSE, results='hide'}
 pdf("figures/Volcanos.pdf")
@@ -571,42 +512,38 @@ for (i in colnames(cont.matrix)){
 dev.off()
 ```
 
-## Multiple Comparisons
+### Comparaciones múltiples
 
-When one selects genes in several comparisons it is usually interesting to know which genes have been selected in each comparison. Sometimes biologically relevant genes will be those that are selected in one of them but not in others. In other occasions he interest will lie in genes that are selected in all comparisons.
+Cuando uno selecciona genes en varias comparaciones, generalmente es interesante saber qué genes se han seleccionado en cada comparación. A veces, los genes biológicamente relevantes serán aquellos que se seleccionan en uno de ellos pero no en otros. En otras ocasiones, su interés radicará en los genes que se seleccionan en todas las comparaciones @Gonzalo2020.
 
-Functions `decideTests` and `VennDiagram` from package limma can be used to annotate and count the genes selected in every comparison.
-
-```{r decideTests.1}
+```{r decideTests.1, echo=FALSE}
 library(limma)
 res<-decideTests(fit.main, method="separate", adjust.method="fdr", p.value=0.1, lfc=1)
 ```
 
-This object has as many columns as comparisons and as many rows as genes. Per each gene  and comparison a "+1" denotes significantly up-regulated (t-test values $>0$, FDR < selected cutoff), a "-1" significantly down-regulated (t-test values $<0$,  FDR < selected cutoff) and a "0" non significant difference (FDR > selected cutoff).
+Este objeto tiene tantas columnas como comparaciones y tantas filas como genes. Por cada gen y comparación, un "+1" denota una regulación significativamente alta (valores de la prueba t $>0$, FDR < punto de corte seleccionado), un "-1" significativamente baja (valores de la prueba t $<0$, FDR < corte seleccionado) y un "0" un diferencia no significativa (FDR > corte seleccionado).
 
-```{r resumeDecideTests}
+```{r resumeDecideTests, echo=FALSE}
 sum.res.rows<-apply(abs(res),1,sum)
 res.selected<-res[sum.res.rows!=0,] 
 print(summary(res))
 ```
 
-This can be visualized in a Venn Diagram. Figure \@ref(fig:vennDiagram) shows a Venn diagram depicting the number of genes that have been called differentially expressed in each comparison with a given cutoff (here the cutoff is defined by "FDR < 0.1" and "logFC > 1"  The figure shows how many of these genes are shared by one or more selections.
+En la fila _DOWN_ nos apareceran todos los genes downregulated, mientras que la fila _UP_ nos indica todos los genes upregulated. 
 
-```{r, vennDiagram, fig.cap="Venn diagram showing the genes in common between the three comparisons performed"}
+```{r, vennDiagram, fig.cap="Venn diagram showing the genes in common between the three comparisons performed", echo=FALSE}
 vennDiagram (res.selected[,1:3], cex=0.9)
 title("Genes in common between the three comparisons\n Genes selected with FDR < 0.1 and logFC > 1")
 ```
 
+Con el diagrama de Venn, se puede observar el número de genes seleccionados en cada comparación, y cuándtos hay en común entre las comparaciones dos a dos y o con las tres.
 
-## Heatmaps
 
-Genes that have been selected as differential expressed may be visualized using a heatmap. These plots use color palettes to highlight distinct values --here positive (up-regulation) or negative (down-regulation) significantly differential expressions. 
+### Heatmaps
 
-_Heatmaps_ can be used to visualize the expression values of differential expressed genes with no specific order, but it is usually preferred to plot them doing a hierarchical clustering on genes (rows) or columns(samples) in order to find groups of genes with common patterns of variation which can eventually be associated to the different groups being compared.
+Aquellos genes que se seleccionaron como diferencialmente expresados, se logran visualizar en un mapa de calor. Estos mapas no muestran un orden específico, pero generalmente se prefiere trazarlos haciendo un agrupamiento jerárquico en genes (filas) o columnas (muestras) para encontrar grupos de genes con patrones comunes de variación que eventualmente puede asociarse a los diferentes grupos que se comparan @Gonzalo2020.
 
-There may be discussion on which genes to select for doing a heatmap. A common option is to select the gens that have been selected in the previous steps, that is the genes that have been called differential expressed in at least one comparison.
-
-```{r data4Heatmap}
+```{r data4Heatmap, echo=FALSE}
 probesInHeatmap <- rownames(res.selected)
 HMdata <- exprs(eset_filtered)[rownames(exprs(eset_filtered)) %in% probesInHeatmap,]
 
@@ -616,11 +553,7 @@ rownames(HMdata) <- SYMBOLS
 write.csv(HMdata, file = file.path("./results/data4Heatmap.csv"))
 ```
 
-With the selected data a heatmap can be generated with or without clustering genes and/or samples.
-
-Figure \@ref(fig:heatmapNoclustering) shows a heatmap produced for all the genes selected with the same criteria described above (FDR < 0.1 and logFC > 1) where no clustering of genes and samples is performed.
-
-```{r heatmapNoclustering, fig.cap="Heatmap for expression data without any grouping"}
+```{r heatmapNoclustering, fig.cap="Mapa de calor para datos de expresión sin ninguna agrupación", echo=FALSE, fig.show='hide'}
 my_palette <- colorRampPalette(c("blue", "red"))(n = 299)
 library(gplots)
 
@@ -643,9 +576,7 @@ heatmap.2(HMdata,
           srtCol = 30)
 ```
 
-Figure \@ref(fig:heatmapClustering) shows a heatmap produced for all the genes selected with the same criteria described above (FDR < 0.1 and logFC > 1) where genes and samples are forced to group by row and column similarity respectivelty.
-
-```{r heatmapClustering, fig.cap="Heatmap for expression data grouping genes (rows) and samples (columns) by their similarity"}
+```{r heatmapClustering, fig.cap="Mapa de calor para expresión de datos que agrupan genes (filas) y muestras (columnas) por su similitud", echo=FALSE}
 heatmap.2(HMdata,
           Rowv = TRUE,
           Colv = TRUE,
@@ -665,21 +596,16 @@ heatmap.2(HMdata,
           srtCol = 30)
 ```
 
-## Biological Significance of results
+Mapa de calor producido para todos los genes seleccionados con los mismos criterios descritos anteriormente (FDR <0.1 y logFC> 1) donde los genes y las muestras se ven obligados a agruparse por fila y columna de forma similar.
 
-Once a list of gene has being obtained that characterizes the difference between two conditions it has to be interpreted. Although this requires, of course, a good understanding of the underlying biological problem, a statistical approach known as "Gene Set Analysis" can be useful for suggesting ideas for the interpretation.
+### Significado biológico de los resultados
 
-With this aim these types of analyses seek to establish whether, given a list of genes selected for being differential expressed between two conditions, the functions, biological processes or molecular pathways that characterize them appear on this list more frequently than among the rest of the genes analyzed.
+El análisis de conjuntos de genes es una herramienta valiosa para resumir datos de expresión génica de alta dimensión en términos de conjuntos biológicamente relevantes. Esta es un área activa de investigación y se han desarrollado numerosos métodos de análisis de conjuntos de genes. A pesar de esta popularidad, los estudios comparativos sistemáticos han sido de alcance limitado @Kong.
 
-There are many variants of these types of analysis, see @Khatri2012,  but here we will use the basic enrichment analysis as described in  implemented in the `ReactomePA` Bioconductor package. The analysis is done on the ReactomePA annotation database [https://reactome.org/](https://reactome.org/).
+Con la lista de genes diferencialmente expresados entre dos condiciones, se busca establecer si las funciones, procesos biológicos o vías moleculares que los caracterizan aparecen en esta lista con más frecuencia que entre el resto de los genes analizado @Gonzalo2020, determinando diferencias concordantes estadísticamente significativas entre dos estados biológicos (por ejemplo, fenotipos).
 
-Analyses of this type need a minimum number of genes to be reliable, preferably a few hundreds than a few dozens, so it is common to perform a selection less restrictive than with the previous steps. 
-For instance an option is to include all genes with a non-stringent FDR cutoff, such as FDR < 0.15 without filtering by minimum "fold-change").
-
-As a first step we prepare the list of gene lists that will be analyzed:
-
-```{r selectGenes}
-listOfTables <- list(NCI.H520.PRvsNCI.H520.PS = topTab_NCI.H520.PRvsNCI.H520.PS,
+```{r selectGenes, echo=FALSE}
+listOfTables <- list(NCIH520.PRvsNCIH520.PS = topTab_NCIH520.PRvsNCIH520.PS,
                      RH41.PRvsRH41.PS = topTab_RH41.PRvsRH41.PS,
                      SJCRH30.PRvsSJCRH30.PS = topTab_SJCRH30.PRvsSJCRH30.PS,
                      INT = topTab_INT)
@@ -696,21 +622,19 @@ for (i in 1:length(listOfTables)){
 sapply(listOfSelected, length)
 ```
 
-The analysis also requires to have the Entrez Identifiers for all genes analyzed.
-It is an open discussion if what one should use is "all genes analyzed" -that is genes that have been retained in the analysis and are part of the "topTable"- or all genes available. In this case we use the second option and define our universe to be all genes that have at least one annotation in the Gene Ontology
+El análisis también requiere tener los identificadores de Entrez para todos los genes analizados. Es una discusión abierta si lo que se debe usar es "todos los genes analizados", es decir, los genes que se han retenido en el análisis y son parte de la "topTab", o todos los genes disponibles. En este caso, se utiliza la segunda opción y se define el universo como todos los genes que tienen al menos una anotación en la ontología genética @Gonzalo2020.
 
-```{r}
+```{r, echo=FALSE}
 mapped_genes2GO <- mappedkeys(org.Hs.egGO)
 mapped_genes2KEGG <- mappedkeys(org.Hs.egPATH)
 mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
 ```
 
-The Biological significance analysis will be applied only to the first two lists. Sometimes yet another decomposition is applied so that up and downregulated genes are separately analyzed. This will not be done here because there is no clear biological argument to proceed so in all cases.
 
-```{r BiologicalSig}
+```{r BiologicalSig, echo=FALSE}
 library(ReactomePA)
 
-listOfData <- listOfSelected[1:4]
+listOfData <- listOfSelected[1:3]
 comparisonsNames <- names(listOfData)
 universe <- mapped_genes
 
@@ -734,7 +658,7 @@ for (i in 1:length(listOfData)){
               row.names = FALSE)
     
     pdf(file=paste0("./results/","ReactomePABarplot.",comparison,".pdf"))
-    print(barplot(enrich.result, showCategory = 15, font.size = 4, 
+    print(barplot(enrich.result, showCategory = 15, font.size = 7, 
                   title = paste0("Reactome Pathway Analysis for ", comparison,". Barplot")))
     dev.off()
     
@@ -746,54 +670,33 @@ for (i in 1:length(listOfData)){
 }
 ```
 
-The results obtained in the analysis of biological significance are:
-
-  - a _.csv_ file with a summary of all the enriched pathways and the associated statistics. 
-  - a bar plot with the best enriched pathways. Height of the bar plot is the number of genes of our analysis related with that pathway. Moreover, pathways are  ordered by statistical significance.
-  - a plot with a network of the enriched pathways and the relation among the genes included.
-  
-  Figure \@ref(fig:network) shows the network produced from the genes selected in the comparison "KO and WT in RT"
-
-```{r network, fig.cap="Network obtained from the Reactome enrichment analysis on the list obtained from the comparison between KO and WT in RT"}
-library(ggplot2)
-cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
-         vertex.label.cex = 0.75)
+```{r, echo=FALSE}
+knitr::include_graphics("figures/figure5.png")
 ```
 
-In our study for comparison _KOvsWT.COLD_ three enriched pathway have been found, for example _Synthesis of very long-chain fatty acyl-CoAs_, and in comparison _KOvsCTL.RT_, five enriched pathways have been found (Table \@ref(tab:tableReacto)). An interesting one is _Inositol phosphate metabolism_.
+Red obtenida del análisis de enriquecimiento de Reactome en la lista obtenida de la comparación entre NCIH520.PRvsNCIH520.PS. Se encontraron cinco vías enriquecidas: _Signaling by WNT_, _Signaling by Nuclear Receptors_, _TCF dependent signaling in response to WNT_, _Mitotic G1−G1/S phases_ y _S Phase_.
 
-```{r tableReacto, echo=FALSE}
-Tab.react <- read.csv2(file.path("./results/ReactomePA.Results.NCI.H520.PRvsNCI.H520.PS.csv"), 
-                       sep = ",", header = TRUE, row.names = 1)
-
-Tab.react <- Tab.react[1:4, 1:5]
-knitr::kable(Tab.react, booktabs = TRUE, caption = "First rows and columns for Reactome results on KOvsWT.RT.csv comparison")
+```{r, echo=FALSE}
+knitr::include_graphics("figures/figure6.png")
 ```
 
+Red obtenida del análisis de enriquecimiento de Reactome en la lista obtenida de la comparación entre RH41.PRvsRH41.PS Se encontraron cuatro vías enriquecidas: _Extracellular matrix organization_, _Interferon alpha/beta signaling_, _Non−integrin membrane−ECM interactions_ y _Striated Muscle Contraction_.
 
-## Summary of results
-
-Once the process has been completed one has obtained a, sometimes long, list of files with the data and the analysis results. These files are of the basis for discussing the results and looking for a biological interpretation. Both aspects exceed the goals of this chapter so they are ommited here.
-
-It is useful to create a file with the type, name and description of all the files generated along the analysis. Table \@ref(tab:listOfFiles) shows the list of files generated in the current case study. 
-
-```{r listOfFiles, echo=FALSE}
-listOfFiles <- dir("./results/") 
-knitr::kable(
-  listOfFiles, booktabs = TRUE,
-  caption = 'List of files generated in the analysis',
-  col.names="List_of_Files"
-)
+```{r, echo=FALSE}
+knitr::include_graphics("figures/figure7.png")
 ```
 
+Red obtenida del análisis de enriquecimiento de Reactome en la lista obtenida de la comparación entre RH41.PRvsRH41.PS Se encontraron tres vías enriquecidas: _L1CAM interactions_, _Non−integrin membrane−ECM interactions_ y _Syndecan interactions_.
 
-# Notes
+## Conclusiones
 
-__1__ R and Bioconductor are open source software. This mean they are free (as in "free bier") but it also means that compatibility between versions is not always 100% granted. It is important to know which version of R and Bioconductor one is using for the analysis.
+* Aunque todas las matrices poseen sus réplicas, es importante resaltar que la matriz RH41.PR posee dos más que el resto, o sea cinco. Quizás hubiese sido más simple haber tomado sólo tres, si al momento de observar el control de calidad, estos no poseían errores. 
+* Es importante realizar el control de datos, para determinar la calidad de los resultados y lograr hacer las comparaciones bajo las mismas condiciones. 
+* La agrupación de los resultados se obtiene a partir de la línea celular de donde se tomó.
+* La matriz de contraste permite determinar cuales grupos serán comparados entre sí.
+* Al momento de tener la lista de genes expresados diferencialmente, es importante realizar la anotación, que permite poner nombres más familiares a cada gen. 
+* La lista de genes diferencialmente expresados se obtiene desde el p-valor más pequeño hasta el más grande. 
+* Con el mapa de calor podemos ver aquellos genes que se seleccionaron como diferencialmente expresados.
+* La comparación entre NCIH520.PRvsNCIH520.PS es la que más vías enriquecidas evidenció.
 
- __2__ Although it may seem irrelevant it is important to be aware of regional settings before reading or writing text files. For instance in some European countries the decimal point is the "comma" while in anglosaxon ones it is the "dot". R can read any of these data formats but, of course it need to be informed of which format is used in any situation.]
-
-__3__ Sometimes package installation may present some difficulties, often related to the operating system being used or even the workplace (for example if the user is behindd a proxy). In these cases the recommendation is to try to install packages one by one and, if needed contact the institution IT team.
-
-
-# References
+# Bibliografía

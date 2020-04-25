@@ -46,7 +46,6 @@ targets<- read.csv2("./data/targets.csv", header = TRUE, sep = ";")
 knitr::kable(
   targets, booktabs = TRUE,
   caption = 'Content of the targets file used for the current analysis')
-summary(targets)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 library(oligo)
 celFiles <- list.celfiles("./data", full.names = TRUE)
@@ -191,6 +190,12 @@ if (!exists("eset_filtered")) load (file="./results/normalized.Data.Rda")
 library(limma)
 designMat<-model.matrix(~0+Group, pData(eset_filtered))
 colnames(designMat) <- c("NCIH520.PR", "NCIH520.PS", "RH41.PR", "RH41.PS", "SJCRH30.PR", "SJCRH30.PS")
+row.names(designMat) <- c("RH41.PS.1", "RH41.PS.2", "RH41.PS.3", 
+                          "RH41.PR.1", "RH41.PR.2", "RH41.PR.3", "RH41.PR.4", "RH41.PR.5", 
+                          "NCIH520.PS.1", "NCIH520.PS.2", "NCIH520.PS.3",
+                          "NCIH520.PR.1", "NCIH520.PR.2", "NCIH520.PR.3",
+                          "SJCRH30.PS.1", "SJCRH30.PS.2", "SJCRH30.PS.3",
+                          "SJCRH30.PR.1", "SJCRH30.PR.2", "SJCRH30.PR.3")
 print(designMat)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 cont.matrix <- makeContrasts (NCIH520.PRvsNCIH520.PS = NCIH520.PR-NCIH520.PS,
@@ -237,12 +242,23 @@ write.csv(topAnnotated_RH41.PRvsRH41.PS, file="./results/topAnnotated_RH41.PRvsR
 write.csv(topAnnotated_SJCRH30.PRvsSJCRH30.PS, file="./results/topAnnotated_SJCRH30.PRvsSJCRH30.PS.csv")
 write.csv(topAnnotated_INT, file="./results/topAnnotated_INT.csv")
 ##------------------------------------------------------------------------------------------------------------------------------------------
+short<- head(topAnnotated_NCIH520.PRvsNCIH520.PS[1:5,1:4])
+library(kableExtra)
+knitr::kable(
+  short, booktabs = TRUE,
+  caption = 'Annotations added to results "topTable" for the comparison "NCIH520.PRvsNCIH520.PS"')
+show(short)
+##------------------------------------------------------------------------------------------------------------------------------------------
 library(clariomshumantranscriptcluster.db)
 geneSymbols <- select(clariomshumantranscriptcluster.db, rownames(fit.main), c("SYMBOL"))
 SYMBOLS<- geneSymbols$SYMBOL
-volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
-            main=paste("Differentially expressed genes", colnames(cont.matrix)[1], sep="\n")) 
-abline(v=c(-1,1))
+par(mfrow=c(2,2))
+for (i in colnames(cont.matrix)){
+  volcanoplot(fit.main, coef=i, highlight=10, names=SYMBOLS,
+              main=paste("Differentially expressed genes",i, sep="\n"))
+  abline(v=c(-1,1))
+}
+dev.off()
 ##------------------------------------------------------------------------------------------------------------------------------------------
 tiff("figures/VolcanoPlot.tiff", res = 150, width = 5, height = 5, units = 'in')
 volcanoplot(fit.main, coef=1, highlight=4, names=SYMBOLS, 
@@ -382,7 +398,7 @@ mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
 ##------------------------------------------------------------------------------------------------------------------------------------------
 library(ReactomePA)
 
-listOfData <- listOfSelected[1:4]
+listOfData <- listOfSelected[1:3]
 comparisonsNames <- names(listOfData)
 universe <- mapped_genes
 
@@ -406,7 +422,7 @@ for (i in 1:length(listOfData)){
               row.names = FALSE)
     
     pdf(file=paste0("./results/","ReactomePABarplot.",comparison,".pdf"))
-    print(barplot(enrich.result, showCategory = 15, font.size = 4, 
+    print(barplot(enrich.result, showCategory = 15, font.size = 7, 
                   title = paste0("Reactome Pathway Analysis for ", comparison,". Barplot")))
     dev.off()
     
@@ -421,11 +437,6 @@ library(ggplot2)
 dev.off()
 cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
          vertex.label.cex = 0.2)
-##------------------------------------------------------------------------------------------------------------------------------------------
-tiff("figures/cnetplot.tiff", res = 100, width = 10, height = 8, units = 'in')
-cnetplot(enrich.result, categorySize = "geneNum", schowCategory = 15, 
-         vertex.label.cex = 0.7)
-dev.off()
 ##------------------------------------------------------------------------------------------------------------------------------------------
 Tab.react <- read.csv2(file.path("./results/ReactomePA.Results.NCIH520.PRvsNCIH520.PS.csv"), 
                        sep = ",", header = TRUE, row.names = 1)
