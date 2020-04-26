@@ -38,11 +38,11 @@ if(!(require(printr))) {
 ```
 
 
-# Summary/Abstract
+# Resumen
 
 De referencia para el estudio, se tomaron unas matrices de diferentes líneas celulares. Esto con el objetivo de comparar aquellas líneas que eran sensibles a prexasertib con aquellas que eran resistentes, pues esta es una molécula que interfire en el ciclo celular, permitiendo que células cancerígenas continuen con su respectiva división. Debido a esto, se hizo un análisis donde se pudo obtener los resultados de aquellos genes que se expresaron diferencialmente; para esto se implementó el software R con la ayuda del paquete Bioconductor^[https://github.com/EstebanVargasParra/PEC1.git].
  
-## Key Words
+## Palabras claves
 
 Líneas celulares, cancerígenas, genes, R, Bioconductor. 
 
