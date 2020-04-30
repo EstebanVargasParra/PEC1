@@ -39,7 +39,7 @@ dir.create("results")
 #BiocManager::install("genefilter")
 #BiocManager::install("clariomshumantranscriptcluster.db")
 #BiocManager::install("annotate")
-#BiocManager::install("org.Mm.eg.db")
+#BiocManager::install("org.Hs.eg.db")
 #BiocManager::install("ReactomePA")
 ##------------------------------------------------------------------------------------------------------------------------------------------
 targets<- read.csv2("./data/targets.csv", header = TRUE, sep = ";")
@@ -442,7 +442,7 @@ Tab.react <- read.csv2(file.path("./results/ReactomePA.Results.NCIH520.PRvsNCIH5
                        sep = ",", header = TRUE, row.names = 1)
 
 Tab.react <- Tab.react[1:4, 1:5]
-knitr::kable(Tab.react, booktabs = TRUE, caption = "First rows and columns for Reactome results on KOvsWT.RT.csv comparison")
+knitr::kable(Tab.react, booktabs = TRUE, caption = "First rows and columns for Reactome results on NCIH520.PRvsNCIH520.csv comparison")
 ##------------------------------------------------------------------------------------------------------------------------------------------
 listOfFiles <- dir("./results/") 
 knitr::kable(

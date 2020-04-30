@@ -152,7 +152,7 @@ BiocManager::install("limma")
 BiocManager::install("genefilter")
 BiocManager::install("mogene21sttranscriptcluster.db")
 BiocManager::install("annotate")
-BiocManager::install("org.Mm.eg.db")
+BiocManager::install("org.Hs.eg.db")
 BiocManager::install("ReactomePA")
 BiocManager::install("reactome.db")
 ```
